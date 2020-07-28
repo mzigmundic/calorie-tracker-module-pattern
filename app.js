@@ -45,6 +45,45 @@ const ItemController = (function() {
             return newItem;
         },
 
+        // Get Item By ID Funcition
+        getItemById: function(id) {
+            let found = null;
+            data.items.forEach(item => {
+                if (item.id === id) {
+                    found = item;
+                }
+            });
+            return found;
+        },
+
+        // Update Item Function
+        updateItem: function(name, calories) {
+            // calories to number
+            calories = parseInt(calories);
+
+            let found = null;
+
+            data.items.forEach(item => {
+                if (item.id === data.currentItem.id) {
+                    item.name = name;
+                    item.calories = calories;
+                    found = item;
+                }
+            });
+
+            return found;
+        },
+
+        // Set Current Meal Function
+        setCurrentItem: function(item) {
+            data.currentItem = item;
+        },
+
+        // Get Current Meal Function
+        getCurrentItem: function() {
+            return data.currentItem;
+        },
+
         getTotalCalories: function() {
             let total = 0;
 
@@ -133,6 +172,23 @@ const UIController = (function() {
             document.querySelector(DOMSelectors.itemList).insertAdjacentElement('beforeend', li);
         },
 
+        // Update List Item Function
+        updateListItem: function(item) {
+            let listItems = document.querySelectorAll(DOMSelectors.listItems);
+            // turn node list into array
+            listItems = Array.from(listItems);
+            listItems.forEach(listItem => {
+                const itemID = listItem.getAttribute('id');
+
+                if (itemID === `item-${item.id}`) {
+                    document.querySelector(`#${itemID}`).innerHTML = `<strong>${item.name}: </strong><em>${item.calories} Calories</em>
+                    <a href="#" class="btn btn-light btn-sm float-right">
+                        <i class="edit-item fas fa-pen"></i>
+                    </a>`;
+                }
+            });
+        },
+
         // Get Item Input Function
         getItemInput: function() {
             return {
@@ -147,6 +203,13 @@ const UIController = (function() {
             document.querySelector(DOMSelectors.itemCaloriesInput).value = '';
         },
 
+        // Add Item To Form Function
+        addItemToForm: function() {
+            document.querySelector(DOMSelectors.itemNameInput).value = ItemController.getCurrentItem().name;
+            document.querySelector(DOMSelectors.itemCaloriesInput).value = ItemController.getCurrentItem().calories;
+            UIController.showEditState();
+        },
+
         // Hide List Function
         hideList: function() {
             document.querySelector(DOMSelectors.itemList).style.display = 'none';
@@ -155,6 +218,23 @@ const UIController = (function() {
         // Show Total Calories Function
         showTotalCalories: function(totalCalories) {
             document.querySelector(DOMSelectors.totalCalories).textContent = totalCalories;
+        },
+
+        // Clear Edit Mode Function
+        clearEditState: function() {
+            UIController.clearInput();
+            document.querySelector(DOMSelectors.updateBtn).style.display = 'none';
+            document.querySelector(DOMSelectors.deleteBtn).style.display = 'none';
+            document.querySelector(DOMSelectors.backBtn).style.display = 'none';
+            document.querySelector(DOMSelectors.addBtn).style.display = 'inline';
+        },
+
+        // Show Edit Mode Function
+        showEditState: function() {
+            document.querySelector(DOMSelectors.updateBtn).style.display = 'inline';
+            document.querySelector(DOMSelectors.deleteBtn).style.display = 'inline';
+            document.querySelector(DOMSelectors.backBtn).style.display = 'inline';
+            document.querySelector(DOMSelectors.addBtn).style.display = 'none';
         },
 
         // Get DOM Selectors Function
@@ -180,6 +260,20 @@ const App = (function(ItemController, UIController) {
 
         // add item event
         document.querySelector(DOMSelectors.addBtn).addEventListener('click', addItemSubmit);
+
+        // disable submit on enter
+        document.addEventListener('keypress', e => {
+            if (e.keyCode === 13) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // edit icon click event
+        document.querySelector(DOMSelectors.itemList).addEventListener('click', editItemClick);
+
+        // update item event
+        document.querySelector(DOMSelectors.updateBtn).addEventListener('click', updateItemSubmit);
     };
 
     // Private Add Item Submit Function
@@ -210,12 +304,65 @@ const App = (function(ItemController, UIController) {
         e.preventDefault();
     };
 
+    // Private Edit Item Click Function
+    const editItemClick = function(e) {
+
+        if (e.target.classList.contains('edit-item')) {
+
+            // get list item id (item-0, item-1)
+            const listId = e.target.parentNode.parentNode.id;
+
+            // break into an array
+            const listIdArr = listId.split('-');
+
+            // get the actual id
+            const id = parseInt(listIdArr[1]);
+
+            // get item
+            const itemToEdit = ItemController.getItemById(id);
+
+            // set current item
+            ItemController.setCurrentItem(itemToEdit);
+
+            // add item to form
+            UIController.addItemToForm();
+        }
+
+        e.preventDefault();
+    };
+
+    // Private Update Item Submit Function
+    const updateItemSubmit = function(e) {
+
+        // get item input
+        const input = UIController.getItemInput();
+
+        // update item
+        const updatedItem = ItemController.updateItem(input.name, input.calories);
+
+        // update UI
+        UIController.updateListItem(updatedItem);
+
+        // get total calories
+        const totalCalories = ItemController.getTotalCalories();
+
+        // add total calories to the UI
+        UIController.showTotalCalories(totalCalories);
+
+        UIController.clearEditState();
+
+        e.preventDefault();
+    };
+
     // Public Functions
     return {
 
         // Init Function
         init: function() {
-            console.log('Strating app...')
+            console.log('Strating app...');
+
+            // clear edit mode / set initial state
+            UIController.clearEditState();
 
             // fetch items from data structure
             const items = ItemController.getItems();
